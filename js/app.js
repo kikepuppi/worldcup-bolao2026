@@ -417,8 +417,10 @@
       const actual = t.actualStage > 0 ? L[t.actualStage] : "pending";
       return `<div class="bteam ${earned ? "ok" : "pend"}">
         <img src="${flagByName(t.team)}" alt="" loading="lazy">
-        <span class="bteam__name">${esc(t.team)}</span>
-        <span class="bteam__stage">pick: <b>${L[t.predStage]}</b> · now: ${actual}</span>
+        <span class="bteam__info">
+          <span class="bteam__name">${esc(t.team)}</span>
+          <span class="bteam__stage">pick <b>${L[t.predStage]}</b> · now ${actual}</span>
+        </span>
         ${pill}
       </div>`;
     }).join("");

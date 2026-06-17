@@ -441,8 +441,11 @@ button{ font:inherit; color:inherit; cursor:pointer; }
   display:flex; align-items:center; gap:.6rem; padding:.5rem .2rem; border-top:1px solid var(--line);
 }
 .bteam img{ width:24px; height:18px; border-radius:3px; object-fit:cover; box-shadow:0 0 0 1px var(--line-2); flex-shrink:0; }
-.bteam__name{ font-weight:600; font-size:.9rem; flex-shrink:0; }
-.bteam__stage{ font-size:.68rem; color:var(--muted); margin-left:auto; white-space:nowrap; }
+.bteam__info{ display:flex; flex-direction:column; min-width:0; flex:1; }
+.bteam__name{ font-weight:600; font-size:.9rem; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bteam__stage{ font-size:.68rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bteam__stage b{ color:var(--ink-2); }
+.bteam .ppill{ margin-left:.4rem; flex-shrink:0; }
 .bteam__stage b{ color:var(--ink-2); }
 .bteam.pend{ opacity:.7; }
 
