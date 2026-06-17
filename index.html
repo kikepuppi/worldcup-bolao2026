@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#06141B" />
+  <meta name="description" content="FIFA World Cup 2026 — live standings, fixtures and the 48 teams across the USA, Mexico & Canada." />
+  <title>World Cup 26 — Matchday</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body data-tab="standings">
+
+  <!-- ===== Top app bar ===== -->
+  <header class="appbar">
+    <div class="appbar__inner">
+      <div class="wordmark">
+        <span class="wordmark__kicker">FIFA</span>
+        <h1 class="wordmark__title">WORLD&nbsp;CUP <span class="wordmark__yr">26</span></h1>
+        <span class="wordmark__hosts">USA · Mexico · Canada</span>
+        <span class="wordmark__rule" aria-hidden="true"></span>
+      </div>
+
+      <div class="status" id="status">
+        <span class="status__pill status__pill--phase" id="statusPhase">Loading…</span>
+        <span class="status__pill" id="statusPlayed">— / 104 played</span>
+      </div>
+    </div>
+
+    <!-- ===== Signature: live results ticker ===== -->
+    <div class="ticker" id="ticker" aria-label="Latest results">
+      <div class="ticker__track" id="tickerTrack"></div>
+    </div>
+  </header>
+
+  <!-- ===== Tab panels ===== -->
+  <main class="stage">
+
+    <section class="panel" id="panel-standings" data-panel="standings" aria-label="Standings">
+      <div class="panel__head">
+        <h2 class="panel__title">Group Standings</h2>
+        <p class="panel__note">
+          <span class="key key--q"></span> Through to Round of 32 &nbsp;
+          <span class="key key--3"></span> 3rd — best 8 advance
+        </p>
+      </div>
+      <div class="groups" id="groups"></div>
+    </section>
+
+    <section class="panel" id="panel-games" data-panel="games" aria-label="Games" hidden>
+      <div class="panel__head">
+        <h2 class="panel__title">Fixtures &amp; Results</h2>
+      </div>
+      <div class="chips" id="stageChips" role="tablist" aria-label="Filter by stage"></div>
+      <div class="fixtures" id="fixtures"></div>
+    </section>
+
+    <section class="panel" id="panel-teams" data-panel="teams" aria-label="Teams" hidden>
+      <div class="panel__head">
+        <h2 class="panel__title">The 48</h2>
+      </div>
+      <div class="chips" id="groupChips" role="tablist" aria-label="Filter by group"></div>
+      <div class="teams" id="teams"></div>
+    </section>
+
+    <section class="panel" id="panel-boloes" data-panel="boloes" aria-label="Bolão" hidden>
+      <!-- leaderboard sub-view -->
+      <div id="boloesList">
+        <div class="panel__head">
+          <h2 class="panel__title">Bolão Geral</h2>
+          <p class="panel__note" id="boloesNote"></p>
+        </div>
+        <div class="board" id="board"></div>
+      </div>
+      <!-- participant detail sub-view -->
+      <div id="boloesDetail" hidden></div>
+    </section>
+
+  </main>
+
+  <!-- ===== Bottom tab nav (mobile-first, thumb reach) ===== -->
+  <nav class="tabbar" aria-label="Sections">
+    <button class="tabbar__btn is-active" data-go="standings" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3"/></svg>
+      <span>Standings</span>
+    </button>
+    <button class="tabbar__btn" data-go="games">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v3m0 10v3m8-8h-3M7 12H4"/></svg>
+      <span>Games</span>
+    </button>
+    <button class="tabbar__btn" data-go="teams">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 6a3 3 0 0 1 0 6m5 8a5 5 0 0 0-6-4.9"/></svg>
+      <span>Teams</span>
+    </button>
+    <button class="tabbar__btn" data-go="boloes">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v3a4 4 0 0 1-8 0V4zM8 6H5v1a3 3 0 0 0 3 3m8-4h3v1a3 3 0 0 1-3 3M9 14h6M10 14v3m4-3v3M8 20h8"/></svg>
+      <span>Bolão</span>
+    </button>
+  </nav>
+
+  <!-- ===== Team detail sheet ===== -->
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet__scrim" data-close></div>
+    <div class="sheet__card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <button class="sheet__close" data-close aria-label="Close">×</button>
+      <div class="sheet__body" id="sheetBody"></div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

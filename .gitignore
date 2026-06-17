@@ -1,0 +1,24 @@
+# --- temp / build artifacts used during development ---
+/_*            # _conv/, _v_*.png, _dom*.html, _spec.json, _edge.log, screenshots
+*.log
+
+# --- Python (tools/parse_boloes.py) ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# --- Excel lock files (when a spreadsheet is open) ---
+~$*.xls*
+
+# --- friends' raw prediction spreadsheets (private source) ---
+# The site doesn't need these — predictions are baked into data/palpites.json.
+/boloes/
+
