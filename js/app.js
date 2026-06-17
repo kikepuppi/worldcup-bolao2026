@@ -37,6 +37,7 @@
       renderTeams();
       renderBoloes();
       if (location.hash) routeFromHash();
+      startLivePolling();
     } catch (err) {
       const msg = `<div class="error"><b>Couldn't reach the World Cup feed</b>
         The API is a little slow today — give it another go.
@@ -71,17 +72,32 @@
 
   function renderStatus() {
     const played = STATE.games.filter(WC.isFinished).length;
-    const live = STATE.games.filter(WC.isLive).length;
     $("#statusPhase").textContent = currentPhase();
     $("#statusPlayed").textContent = `${played}/${STATE.games.length} played`;
-    if (live) {
-      const pill = document.createElement("span");
+    updateLivePill();
+  }
+
+  // idempotent "N live" pill — created/updated/removed as games go live or end
+  function updateLivePill() {
+    const n = STATE.games.filter(WC.isLive).length;
+    let pill = $("#statusLive");
+    if (!n) { if (pill) pill.remove(); return; }
+    if (!pill) {
+      pill = document.createElement("span");
+      pill.id = "statusLive";
       pill.className = "status__pill";
       pill.style.color = "var(--magenta)";
       pill.style.borderColor = "rgba(255,45,110,.4)";
-      pill.innerHTML = `<span class="dot-live" style="display:inline-block;margin-right:.3rem"></span>${live} live`;
       $("#statusPlayed").after(pill);
     }
+    pill.innerHTML = `<span class="dot-live" style="display:inline-block;margin-right:.3rem"></span>${n} live`;
+  }
+
+  // live match clock: "67" -> 67', "HT" -> HT, else uppercased
+  function liveClock(te) {
+    const s = String(te || "").trim();
+    if (/^\d+$/.test(s)) return s + "'";
+    return s.toUpperCase();
   }
 
   /* ===================================================================
@@ -215,7 +231,7 @@
     }
 
     let kick;
-    if (live) kick = `<span class="kick kick--live"><span class="dot-live"></span>${esc(g.time_elapsed)}'</span>`;
+    if (live) kick = `<span class="kick kick--live"><span class="dot-live"></span>${esc(liveClock(g.time_elapsed))}</span>`;
     else if (finished) kick = `<span class="kick">FT</span>`;
     else kick = `<span class="kick kick--zones"><span class="z"><i>BR</i>${fmtBR(d)}</span><span class="z"><i>PT</i>${fmtPT(d)}</span></span>`;
 
@@ -232,7 +248,7 @@
     const scorers = finished ? scorersBlock(g) : "";
     const canOpen = scorers ? ' data-toggle="1"' : "";
 
-    return `<div class="match${live ? " match--live" : ""}"${canOpen}>
+    return `<div class="match${live ? " match--live" : ""}" data-gid="${esc(g._id || g.id)}"${canOpen}>
       <div class="match__top">
         <span class="stage-badge" data-stage="${esc(WC.stageBadge(g))}">${esc(WC.stageBadge(g))}</span>
         ${kick}
@@ -471,6 +487,79 @@
     document.body.style.overflow = "hidden";
   }
   function closeSheet() { $("#sheet").hidden = true; document.body.style.overflow = ""; }
+
+  /* ===================================================================
+     LIVE POLLING — schedule-aware, fetches only games in their match window
+     =================================================================== */
+  let LIVE_OFFSET = 0;     // (tournament clock) - (device clock), ms
+  let livePolling = false; // in-flight lock
+  const POLL_MS = 60000;
+  const PRE_MIN = 5, POST_MIN = 150; // watch window around kickoff
+
+  const tnow = () => Date.now() + LIVE_OFFSET;
+
+  function watchSet() {
+    const now = tnow();
+    return STATE.games.filter((g) => {
+      if (WC.isFinished(g)) return false;
+      const inst = WC.gameInstant(g);
+      if (!inst) return false;
+      const t = inst.getTime();
+      return now >= t - PRE_MIN * 60000 && now <= t + POST_MIN * 60000;
+    });
+  }
+
+  function replaceCard(g) {
+    const el = document.querySelector('.match[data-gid="' + (g._id || g.id) + '"]');
+    if (!el) return;
+    const tmp = document.createElement("div");
+    tmp.innerHTML = matchCard(g);
+    const nu = tmp.firstElementChild;
+    if (nu) el.replaceWith(nu);
+  }
+
+  async function livePass() {
+    if (livePolling) return;
+    const watch = watchSet();
+    if (!watch.length) return;
+    livePolling = true;
+    let changed = false, finishedFlip = false;
+    try {
+      for (const g of watch) {
+        const fresh = await WC.getGameById(g._id || g.id);
+        if (!fresh) continue;
+        const ht = STATE.teamById[String(fresh.home_team_id)];
+        const at = STATE.teamById[String(fresh.away_team_id)];
+        if (ht && !fresh.home_team_name_en) fresh.home_team_name_en = ht.name_en;
+        if (at && !fresh.away_team_name_en) fresh.away_team_name_en = at.name_en;
+        const idx = STATE.games.findIndex((x) => String(x._id) === String(fresh._id) || String(x.id) === String(fresh.id));
+        if (idx < 0) continue;
+        const prev = STATE.games[idx];
+        if (prev.home_score !== fresh.home_score || prev.away_score !== fresh.away_score ||
+            prev.time_elapsed !== fresh.time_elapsed || prev.finished !== fresh.finished) {
+          changed = true;
+          if (WC.isFinished(fresh) && !WC.isFinished(prev)) finishedFlip = true;
+          STATE.games[idx] = fresh;
+          replaceCard(fresh);
+        }
+      }
+      if (changed) { updateLivePill(); renderTicker(); }
+      if (finishedFlip) {
+        const groups = await WC.refreshGroups();
+        if (groups) STATE.groups = groups;
+        renderStandings();
+        renderBoloes();
+      }
+    } finally {
+      livePolling = false;
+    }
+  }
+
+  function startLivePolling() {
+    if (STATE.health?.timestamp) LIVE_OFFSET = new Date(STATE.health.timestamp).getTime() - Date.now();
+    setInterval(() => { if (!document.hidden) livePass(); }, POLL_MS);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) livePass(); });
+  }
 
   /* ===================================================================
      EVENTS

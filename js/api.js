@@ -157,7 +157,26 @@ const WC = (() => {
     return { groups, teams, games, stadiums: stadiums || [], health, teamById, stadiumById, palpites };
   }
 
-  return { loadAll, parseScorers, parseDate, gameInstant, stageShort, stageBadge, STAGE_LABELS, isFinished, isLive };
+  // fetch a SINGLE game fresh (light) by its Mongo _id — for live polling.
+  // The single-game endpoint omits team names; the caller re-attaches them.
+  async function getGameById(mongoId) {
+    try {
+      const d = await fetchJSON("/get/game/" + mongoId, { retries: 2 });
+      return d.game || d || null;
+    } catch { return null; }
+  }
+
+  // fetch groups (standings) fresh, bypassing the cache — used when a game ends
+  async function refreshGroups() {
+    try {
+      const d = await fetchJSON("/get/groups", { retries: 2 });
+      const groups = d.groups || [];
+      store("groups", groups);
+      return groups;
+    } catch { return null; }
+  }
+
+  return { loadAll, parseScorers, parseDate, gameInstant, stageShort, stageBadge, STAGE_LABELS, isFinished, isLive, getGameById, refreshGroups };
 })();
 
 if (typeof module !== "undefined" && module.exports) module.exports = WC;
