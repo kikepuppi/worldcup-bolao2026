@@ -72,12 +72,49 @@ const WC = (() => {
     });
   }
 
-  // "MM/DD/YYYY HH:mm" -> Date
+  // "MM/DD/YYYY HH:mm" -> Date in the browser's local zone (legacy helper)
   function parseDate(s) {
     if (!s) return null;
     const m = s.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
     if (!m) return new Date(s);
     return new Date(+m[3], +m[1] - 1, +m[2], +m[4], +m[5]);
+  }
+
+  // local_date is the kickoff in the STADIUM's local time. Map each venue to
+  // its IANA zone so we can recover the true UTC instant (DST handled by Intl).
+  const STADIUM_TZ = {
+    1: "America/Mexico_City", 2: "America/Mexico_City", 3: "America/Monterrey", // Mexico, UTC-6
+    4: "America/Chicago", 5: "America/Chicago", 6: "America/Chicago",            // US Central, UTC-5 (DST)
+    7: "America/New_York", 8: "America/New_York", 9: "America/New_York",
+    10: "America/New_York", 11: "America/New_York", 12: "America/Toronto",       // Eastern, UTC-4 (DST)
+    13: "America/Vancouver", 14: "America/Los_Angeles",
+    15: "America/Los_Angeles", 16: "America/Los_Angeles",                        // Western, UTC-7 (DST)
+  };
+
+  // offset (minutes) of a zone at a given instant
+  function tzOffsetMin(date, tz) {
+    const dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    const p = Object.fromEntries(dtf.formatToParts(date).map((x) => [x.type, x.value]));
+    const asUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+    return (asUTC - date.getTime()) / 60000;
+  }
+
+  // interpret a wall-clock time as being in `tz`, return the matching UTC Date
+  function wallToUTC(y, mo, d, h, mi, tz) {
+    const ts = Date.UTC(y, mo - 1, d, h, mi);
+    return new Date(ts - tzOffsetMin(new Date(ts), tz) * 60000);
+  }
+
+  // true UTC instant of a game's kickoff (from venue-local local_date)
+  function gameInstant(g) {
+    const m = String(g.local_date || "").match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+    if (!m) return null;
+    const tz = STADIUM_TZ[String(g.stadium_id)] || "America/New_York";
+    return wallToUTC(+m[3], +m[1], +m[2], +m[4], +m[5], tz);
   }
 
   const STAGE_LABELS = {
@@ -120,5 +157,7 @@ const WC = (() => {
     return { groups, teams, games, stadiums: stadiums || [], health, teamById, stadiumById, palpites };
   }
 
-  return { loadAll, parseScorers, parseDate, stageShort, stageBadge, STAGE_LABELS, isFinished, isLive };
+  return { loadAll, parseScorers, parseDate, gameInstant, stageShort, stageBadge, STAGE_LABELS, isFinished, isLive };
 })();
+
+if (typeof module !== "undefined" && module.exports) module.exports = WC;

@@ -10,11 +10,13 @@
   let STATE = null;
   let NOW = new Date();
 
-  /* date helpers ------------------------------------------------------- */
-  const fmtDay = (d) => d.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
-  const fmtTime = (d) => d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
-  const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-  const sameDay = (a, b) => a && b && dayKey(a) === dayKey(b);
+  /* date helpers — games are shown in Brasília (BR) & Portugal (PT) time -- */
+  const TZ_BR = "America/Sao_Paulo", TZ_PT = "Europe/Lisbon";
+  const fmtBR = (d) => (d ? new Intl.DateTimeFormat("pt-BR", { timeZone: TZ_BR, hour: "2-digit", minute: "2-digit", hour12: false }).format(d) : "");
+  const fmtPT = (d) => (d ? new Intl.DateTimeFormat("pt-PT", { timeZone: TZ_PT, hour: "2-digit", minute: "2-digit", hour12: false }).format(d) : "");
+  const fmtDayBR = (d) => new Intl.DateTimeFormat("en-US", { timeZone: TZ_BR, weekday: "short", day: "numeric", month: "short" }).format(d);
+  const dayKeyBR = (d) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ_BR, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const sameDay = (a, b) => a && b && dayKeyBR(a) === dayKeyBR(b);
 
   const teamName = (g, side) => g[`${side}_team_name_en`] || g[`${side}_team_label`] || "";
   const flagOf = (id) => STATE.teamById[String(id)]?.flag || "";
@@ -89,7 +91,7 @@
     const live = STATE.games.filter(WC.isLive);
     const recent = STATE.games
       .filter(WC.isFinished)
-      .sort((a, b) => (WC.parseDate(b.local_date) - WC.parseDate(a.local_date)))
+      .sort((a, b) => (WC.gameInstant(b) - WC.gameInstant(a)))
       .slice(0, 14);
     const items = [...live, ...recent];
     if (!items.length) {
@@ -173,7 +175,7 @@
      =================================================================== */
   const STAGE_FILTERS = [
     { key: "all", label: "All", match: () => true },
-    { key: "today", label: "Today", match: (g) => sameDay(WC.parseDate(g.local_date), NOW) },
+    { key: "today", label: "Today", match: (g) => sameDay(WC.gameInstant(g), NOW) },
     { key: "group", label: "Groups", match: (g) => String(g.type).toLowerCase() === "group" },
     { key: "r32", label: "R32", match: (g) => String(g.type).toLowerCase() === "r32" },
     { key: "r16", label: "R16", match: (g) => String(g.type).toLowerCase() === "r16" },
@@ -199,7 +201,7 @@
   }
 
   function matchCard(g) {
-    const d = WC.parseDate(g.local_date);
+    const d = WC.gameInstant(g);
     const finished = WC.isFinished(g);
     const live = WC.isLive(g);
     const hs = +g.home_score, as = +g.away_score;
@@ -215,7 +217,7 @@
     let kick;
     if (live) kick = `<span class="kick kick--live"><span class="dot-live"></span>${esc(g.time_elapsed)}'</span>`;
     else if (finished) kick = `<span class="kick">FT</span>`;
-    else kick = `<span class="kick">${d ? fmtTime(d) : ""}</span>`;
+    else kick = `<span class="kick kick--zones"><span class="z"><i>BR</i>${fmtBR(d)}</span><span class="z"><i>PT</i>${fmtPT(d)}</span></span>`;
 
     const score = (val, tbd) => (finished || live)
       ? `<span class="side__score">${esc(val)}</span>`
@@ -249,7 +251,7 @@
     const filterFn = STAGE_FILTERS.find((f) => f.key === gamesFilter).match;
     const list = STATE.games
       .filter(filterFn)
-      .map((g) => ({ g, d: WC.parseDate(g.local_date) }))
+      .map((g) => ({ g, d: WC.gameInstant(g) }))
       .sort((a, b) => a.d - b.d);
 
     if (!list.length) {
@@ -261,7 +263,7 @@
     const days = [];
     let cur = null;
     list.forEach(({ g, d }) => {
-      const k = dayKey(d);
+      const k = dayKeyBR(d);
       if (!cur || cur.k !== k) { cur = { k, d, games: [] }; days.push(cur); }
       cur.games.push(g);
     });
@@ -269,7 +271,7 @@
     $("#fixtures").innerHTML = days.map((day) => {
       const today = sameDay(day.d, NOW);
       return `<div class="daygroup" ${today ? 'data-today="1"' : ""}>
-        <div class="daygroup__date${today ? " is-today" : ""}">${fmtDay(day.d)}${today ? '<span class="today-tag">TODAY</span>' : ""}</div>
+        <div class="daygroup__date${today ? " is-today" : ""}">${fmtDayBR(day.d)}${today ? '<span class="today-tag">TODAY</span>' : ""}</div>
         ${day.games.map(matchCard).join("")}
       </div>`;
     }).join("");
@@ -422,7 +424,7 @@
     }
     const fixtures = STATE.games
       .filter((g) => String(g.home_team_id) === String(t.id) || String(g.away_team_id) === String(t.id))
-      .map((g) => ({ g, d: WC.parseDate(g.local_date) }))
+      .map((g) => ({ g, d: WC.gameInstant(g) }))
       .sort((a, b) => a.d - b.d);
 
     const stats = standing ? `<div class="sheet__stats">
@@ -447,7 +449,7 @@
       }
       return `<div class="match" style="margin-bottom:.5rem;padding:.6rem .75rem">
         <div class="match__top"><span class="stage-badge">${esc(WC.stageBadge(g))}</span>
-          <span class="kick">${fin ? "FT" : (d ? fmtDay(d) + " " + fmtTime(d) : "")}</span></div>
+          <span class="kick">${fin ? "FT" : (d ? fmtDayBR(d) + " · BR " + fmtBR(d) + " · PT " + fmtPT(d) : "")}</span></div>
         <div class="side" style="padding:.1rem 0">
           <img src="${flagOf(oppId)}" alt="">
           <span class="side__name" style="font-size:.88rem">${home ? "vs" : "@"} ${esc(oppName)}</span>
@@ -489,7 +491,7 @@
     if (go === "games") {
       requestAnimationFrame(() => {
         const today = $('.daygroup[data-today="1"]');
-        if (today) today.scrollIntoView({ block: "start", behavior: "smooth" });
+        if (today) today.scrollIntoView({ block: "start", behavior: "auto" });
       });
     }
   }

@@ -262,6 +262,13 @@ button{ font:inherit; color:inherit; cursor:pointer; }
 .stage-badge[data-stage="FINAL"]{ background:rgba(244,200,75,.16); color:var(--gold); }
 .kick{ display:flex; align-items:center; gap:.4rem; }
 .kick--live{ color:var(--magenta); font-weight:700; }
+.kick--zones{ display:flex; gap:.5rem; align-items:center; }
+.kick--zones .z{ display:inline-flex; align-items:center; gap:.25rem; color:var(--ink-2); font-weight:600; }
+.kick--zones .z i{
+  font-style:normal; font-size:.55rem; font-weight:700; letter-spacing:.05em;
+  color:var(--bg); background:var(--cyan); border-radius:3px; padding:.05rem .25rem;
+}
+.kick--zones .z:last-child i{ background:var(--gold); }
 .dot-live{
   width:7px; height:7px; border-radius:50%; background:var(--magenta);
   box-shadow:0 0 0 0 rgba(255,45,110,.6); animation:pulse 1.4s infinite;
